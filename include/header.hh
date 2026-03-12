@@ -22,6 +22,9 @@
 
 #include <chrono>
 
+#include <ncurses.h>
+#include <locale.h>
+
 #define NET_MAX_CONNECTIONS 4
 #define NET_BROADCAST -1
 #define NET_PORT 9999
@@ -50,4 +53,7 @@
 #include "simnet.hh"
 
 #include "paxos.hh"
+
+#include "printable.hh"
+#include "cards.hh"
 
