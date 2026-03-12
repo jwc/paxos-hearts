@@ -40,6 +40,7 @@ public:
 
     lock.unlock();
     consumer.release();
+    std::this_thread::sleep_for(FLBuffer::TIMEOUT);
   }
 
   T consume() override {

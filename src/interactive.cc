@@ -6,15 +6,8 @@ void foo(Cards * c, Buffer<Value> * buf) {
   Value v;
   int bar = 0;
   while (1) {
-    //sleep(2);
     mvprintw(2, 3, "foo() waiting");
-    //consumer.lock();
-    //v = q.front();
-    //q.pop();
     v = buf->consume();
-    //producer.unlock();
-
-    //while (1) ;
     
     mvprintw(2, 0, "%d foo() printing %c/%d\n", bar++, v.type, v.type);
     c->printCard(10, 10, v.type % 52);
@@ -27,8 +20,6 @@ int main(int argc, char** argv) {
   if (argc < 2) {
     exit(1);
   }
-
-  //consumer.lock();
 
   //Networking *net = new Localhost(argv[1]);
   //Paxos *pax = new Paxos(*net);

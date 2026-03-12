@@ -6,7 +6,6 @@
  *
  * Currently implemented in SVBuffer (Single Value) and FLBuffer (Fixed Length)
  */
-
 template <typename T> class Buffer {
   public:
 
@@ -45,6 +44,7 @@ template <typename T> class Buffer {
 
   protected:
     int blocking;
+    static constexpr std::chrono::duration TIMEOUT = std::chrono::milliseconds(1);
 };
 
 #endif // BUFFER_HH
