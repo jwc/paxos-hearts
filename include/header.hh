@@ -56,4 +56,5 @@
 
 #include "printable.hh"
 #include "cards.hh"
+#include "hearts.hh"
 

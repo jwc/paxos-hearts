@@ -33,27 +33,34 @@ char Cards::remove() {
   return cards[numCards];
 }
 
-void Cards::printCards(int y, int x) {
-  for (int i = 0; i < numCards; i++) {
-    printCard(y, x + ((i + i - numCards) * 2), cards[i]);
+void Cards::printCards(int y, int x, int orientation) {
+  mvprintw(sizeY/2, sizeX/2, "orientation:%d", orientation);
+  if ((orientation % 2) == 0) {
+    for (int i = 0; i < numCards; i++) {
+      printCard(y, x + ((i + i - numCards) * 2), orientation, cards[i]);
+    }
+  } else {
+    for (int i = 0; i < numCards; i++) {
+      printCard(y + ((i + i - numCards) * 2), x, orientation, cards[i]);
+    }
   }
 }
 
 void Cards::printSuit(int y, int x, char card) {
   switch (static_cast<Suit>(card / 13)) {
-    case Spades:
+    case SPADES:
       if (useUnicode()) mvprintw(y, x, "♠");
       else mvprintw(y, x, "S");
       break;
-    case Hearts:
+    case HEARTS:
       if (useUnicode()) mvprintw(y, x, "♥");
       else mvprintw(y, x, "H");
       break;
-    case Clubs:
+    case CLUBS:
       if (useUnicode()) mvprintw(y, x, "♣");
       else mvprintw(y, x, "C");
       break;
-    case Diamonds:
+    case DIAMONDS:
       if (useUnicode()) mvprintw(y, x, "♦");
       else mvprintw(y, x, "D");
       break;
@@ -108,29 +115,41 @@ void Cards::printRank(int y, int x, char card) {
   };
 }
 
-void Cards::printCard(int y, int x, char card) {
-  if (useUnicode()) {
-    mvprintw(y-2, x-3, "╭─────╮");
-    for (int i = y-1; i < y+3; i++)
-      mvprintw(i, x-3, "│     │");
-    mvprintw(y+2, x-3, "╰─────╯");
+void Cards::printCard(int y, int x, int orientation, char card) {
+  if (orientation == 0 || orientation == 2) {
+    if (useUnicode()) {
+      mvprintw(y-2, x-3, "╭─────╮");
+      for (int i = y-1; i < y+3; i++)
+        mvprintw(i, x-3, "│     │");
+      mvprintw(y+2, x-3, "╰─────╯");
+    } else {
+      mvprintw(y-2, x-3, ",-----,");
+      for (int i = y-1; i < y+3; i++)
+        mvprintw(i, x-3, "|     |");
+      mvprintw(y+2, x-3, "'-----'");
+    }
   } else {
-    mvprintw(y-2, x-3, ",-----,");
-    for (int i = y-1; i < y+3; i++)
-      mvprintw(i, x-3, "|     |");
-    mvprintw(y+2, x-3, "'-----'");
+    if (useUnicode()) {
+      mvprintw(y-1, x-3, "╭───────╮");
+      for (int i = y-1; i < y+3; i++)
+        mvprintw(i, x-3, "│       │");
+      mvprintw(y+2, x-3, "╰───────╯");
+    } else {
+      mvprintw(y-2, x-3, ",-----,");
+      for (int i = y-1; i < y+3; i++)
+        mvprintw(i, x-3, "|     |");
+      mvprintw(y+2, x-3, "'-----'");
+    }
   }
 
-  if (useColor() && (getSuit(card) == Diamonds || getSuit(card) == Hearts)) 
+  if (useColor() && (getSuit(card) == DIAMONDS || getSuit(card) == HEARTS)) 
     attron(COLOR_PAIR(1));
   printSuit(y-1, x-2, card);
   printRank(y-1, x-1, card);
   printSuit(y+1, x+2, card);
   printRank(y+1, x+1, card);
-  if (useColor() && (getSuit(card) == Diamonds || getSuit(card) == Hearts)) 
+  if (useColor() && (getSuit(card) == DIAMONDS || getSuit(card) == HEARTS)) 
     attroff(COLOR_PAIR(1));
-
-  mvprintw(0, Cards::sizeY - 1, "X");
 }
 
 void Cards::shuffle(int32_t seed) {

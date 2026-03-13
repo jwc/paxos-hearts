@@ -4,10 +4,10 @@
 #define SWAP(a, b, c) { a[b]^=a[c]; a[c]^=a[b]; a[b]^=a[c]; }
 
 enum Suit {
-  Spades = 0, 
-  Hearts = 1, 
-  Clubs = 2, 
-  Diamonds = 3
+  SPADES = 0, 
+  HEARTS = 1, 
+  CLUBS = 2, 
+  DIAMONDS = 3
 };
 
 enum Rank {
@@ -33,7 +33,7 @@ class Cards : public Printable {
   public:
     Cards();
 
-    void printCards(int y, int x);
+    void printCards(int y, int x, int orientation);
     char add(char card);
 
     char remove(char index);
@@ -55,7 +55,7 @@ class Cards : public Printable {
 
     void shuffledDeck();
 
-    void printCard(int y, int x, char card);
+    void printCard(int y, int x, int orientation, char card);
     void printSuit(int y, int x, char card);
     void printRank(int y, int x, char card);
   private:
