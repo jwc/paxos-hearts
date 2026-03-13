@@ -2,14 +2,13 @@
 
 Cards::Cards() : Printable() {
   numCards = 0;
-  visibilityBitmap = 0;
+  visibility = 0;
 }
 
 char Cards::add(char card) {
   assert(card >= 0);
   assert(card < 52);
 
-  visibilityBitmap |= 1 << numCards; 
   cards[numCards] = card;
   return numCards++;
 }
@@ -18,11 +17,26 @@ char Cards::remove(char index) {
   assert(index >= 0);
   assert(index < numCards);
 
-  return 0;
+  char card = cards[index];
+
+  numCards--;
+  for (int i = index; i < numCards; i++)
+    cards[i] = cards[i + 1];
+
+  return card;
+}
+
+char Cards::remove() {
+  assert(numCards > 0);
+
+  numCards--;
+  return cards[numCards];
 }
 
 void Cards::printCards(int y, int x) {
-  printCard(x, y, 8);
+  for (int i = 0; i < numCards; i++) {
+    printCard(y, x + ((i + i - numCards) * 2), cards[i]);
+  }
 }
 
 void Cards::printSuit(int y, int x, char card) {
@@ -116,17 +130,13 @@ void Cards::printCard(int y, int x, char card) {
   if (useColor() && (getSuit(card) == Diamonds || getSuit(card) == Hearts)) 
     attroff(COLOR_PAIR(1));
 
-  mvprintw(0, sizeY - 1, "X");
+  mvprintw(0, Cards::sizeY - 1, "X");
 }
 
-void Cards::shuffledDeck() {
-  clear();
+void Cards::shuffle(int32_t seed) {
+  srand(seed);
 
   for (int i = 0; i < 52; i++) 
-    cards[i] = i;
-
-  for (int i = 0; i < 52; i++) 
-    SWAP(cards, i, rand());
-
-  visibilityBitmap = ~0;
+    SWAP(cards, i, rand() % 52);
 }
+

@@ -37,6 +37,7 @@ class Cards : public Printable {
     char add(char card);
 
     char remove(char index);
+    char remove();
 
     inline void clear() { numCards = 0; };
 
@@ -48,7 +49,9 @@ class Cards : public Printable {
 
     inline Rank getRank(char card) { return static_cast<Rank>(card % 13); };
 
-    inline void toggleVisibility(char index) { visibilityBitmap ^= 1 << index; };
+    inline void toggleVisibility() { visibility ^= 1; };
+
+    void shuffle(int32_t seed);
 
     void shuffledDeck();
 
@@ -58,7 +61,7 @@ class Cards : public Printable {
   private:
     char cards[52];
     char numCards;
-    uint64_t visibilityBitmap;
+    uint64_t visibility;
 
 };
 
