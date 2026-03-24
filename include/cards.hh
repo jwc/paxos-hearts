@@ -34,10 +34,12 @@ class Cards : public Printable {
     Cards();
 
     void printCards(int y, int x, int orientation);
+
     char add(char card);
 
-    char remove(char index);
     char remove();
+
+    char remove(char index);
 
     inline void clear() { numCards = 0; };
 
@@ -56,10 +58,14 @@ class Cards : public Printable {
     void shuffledDeck();
 
     void printCard(int y, int x, int orientation, char card);
+
     void printSuit(int y, int x, char card);
+
     void printRank(int y, int x, char card);
+
   private:
     char cards[52];
+    char selected;
     char numCards;
     uint64_t visibility;
 

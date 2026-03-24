@@ -1,6 +1,9 @@
 #include "header.hh"
 
-void foo(Cards * c, Buffer<Value> * buf) {
+int currentPlayer = 0;
+
+//void foo(Cards * c, Buffer<Value> * buf) {
+void foo(Hearts * h, Buffer<Value> * buf) {
   //Cards * c = new Cards();
   mvprintw(2, 3, "foo() created");
   Value v;
@@ -10,7 +13,9 @@ void foo(Cards * c, Buffer<Value> * buf) {
     v = buf->consume();
     
     mvprintw(2, 0, "%d foo() printing %c/%d\n", bar++, v.type, v.type);
-    c->printCard(10, 10, v.type % 52);
+    //c->printCards(Printable::sizeY-3, Printable::sizeX/2, 0);
+    h->print(currentPlayer);
+    mvprintw(Printable::sizeY-1, Printable::sizeX/2, "X");
   }
   
   mvprintw(0, 0, "foo() done\n");
@@ -23,12 +28,16 @@ int main(int argc, char** argv) {
 
   //Networking *net = new Localhost(argv[1]);
   //Paxos *pax = new Paxos(*net);
-  Cards * c = new Cards();
+  //Cards * c = new Cards();
+  Hearts * h = new Hearts();
+  for (int i = 0; i < 4; i++)
+    h->hands[i].add(i);
   //mvprintw(35, 0, "# threads %d", std::thread::hardware_concurrency());
   Buffer<Value> * buf = new SVBuffer<Value>(1);
 
-  //std::thread output = std::thread(&foo, &pax->getBuffer());
-  std::thread output = std::thread(&foo, c, buf);
+  //std::jthread output = std::jthread(&foo, &pax->getBuffer());
+  //std::jthread output = std::jthread(&foo, c, buf);
+  std::jthread output = std::jthread(&foo, h, buf);
 
   mvprintw(0, 0, "main() ready\n");
   Value v;
@@ -42,11 +51,22 @@ int main(int argc, char** argv) {
     if (v.type == 'r') {
       mvprintw(11, 0, "sz:%d", buf->count());
       //std::this_thread::yield();
-      continue;
     } else if (v.type == 't') {
-      c->toggleUnicode();
-      c->toggleColor();
-      continue;
+      h->toggleUnicode();
+      h->toggleColor();
+    } else if (v.type == 'a') {
+      //c->add(rand() % 52);
+      h->hands[rand() % 4].add(rand() % 52);
+    } else if (v.type == '0') {
+      currentPlayer = 0;
+    } else if (v.type == '1') {
+      currentPlayer = 1;
+    } else if (v.type == '2') {
+      currentPlayer = 2;
+    } else if (v.type == '3') {
+      currentPlayer = 3;
+    } else if (v.type == '4') {
+      currentPlayer = 4; 
     }
     mvprintw(0, 0, "%d main() req(%c/%d)\n", count++, v.type, v.type);
     //pax->makeRequest(v);
@@ -57,6 +77,6 @@ int main(int argc, char** argv) {
   }
 
   mvprintw(0, 0, "main() done\n");
-
+  exit(0);
   return 0;
 }

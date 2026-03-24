@@ -4,7 +4,7 @@
 class Printable {
   private:
     inline static int initialized = 0;
-    inline static std::mutex lock;
+    inline static std::mutex initLock;
 
   protected:
     inline int useUnicode() { return supportsUnicode && preferUnicode; }
@@ -18,7 +18,7 @@ class Printable {
     inline static int supportsColor, preferColor;
   
     Printable() {
-      lock.lock();
+      initLock.lock();
       if ( ! initialized) {
         initialized = 1;
 
@@ -49,17 +49,21 @@ class Printable {
           supportsColor = 0;
         preferColor = 1;
       }
-      lock.unlock();
+      initLock.unlock();
     }
 
     void toggleUnicode() { preferUnicode ^= 1; } 
 
     void toggleColor() { preferColor ^= 1; } 
 
+    void clear() { ::clear(); getmaxyx(stdscr, sizeY, sizeX); }
+
+    void refresh() { ::refresh(); }
+
     void end() {
-      lock.lock();
+      initLock.lock();
       endwin();
-      lock.unlock();
+      initLock.unlock();
     }
 };
 

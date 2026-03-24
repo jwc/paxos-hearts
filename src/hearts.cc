@@ -27,10 +27,29 @@ int Hearts::play(Value move) {
 }
 
 void Hearts::print(int playerPerspective) {
-  hands[(0 + playerPerspective) % 4].printCards(sizeY - 4, sizeX / 2, 0);
+  lock.lock();
+  Hearts::clear();
+
+  hands[(0 + playerPerspective) % 4].printCards(sizeY - 3, sizeX / 2, 0);
   hands[(1 + playerPerspective) % 4].printCards(sizeY / 2,         4, 1);
-  hands[(2 + playerPerspective) % 4].printCards(        4, sizeX / 2, 2);
-  hands[(3 + playerPerspective) % 4].printCards(sizeY / 2, sizeX - 4, 3);
+  hands[(2 + playerPerspective) % 4].printCards(        2, sizeX / 2, 2);
+  hands[(3 + playerPerspective) % 4].printCards(sizeY / 2, sizeX - 5, 3);
+
+  mvprintw(sizeY - 6, sizeX / 2, "Score: %d (%d)", 
+      scores[(0 + playerPerspective) % 4], 
+      scores[((0 + playerPerspective) % 4) + 4]);
+
+  mvprintw(sizeY / 2,         7, "Score: %d (%d)", 
+      scores[(1 + playerPerspective) % 4], 
+      scores[((1 + playerPerspective) % 4) + 4]);
+
+  mvprintw(        5, sizeX / 2, "Score: %d (%d)", 
+      scores[(2 + playerPerspective) % 4], 
+      scores[((2 + playerPerspective) % 4) + 4]);
+
+  mvprintw(sizeY / 2, sizeX - 20, "Score: %d (%d)", 
+      scores[(3 + playerPerspective) % 4], 
+      scores[((3 + playerPerspective) % 4) + 4]);
 
   /*
   for (int i = 0; i < 4; i++) {
@@ -39,4 +58,7 @@ void Hearts::print(int playerPerspective) {
     hands[index].printCards(
   }
   */
+
+  Hearts::refresh();
+  lock.unlock();
 }

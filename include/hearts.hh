@@ -21,7 +21,7 @@ class Hearts : public Printable {
     Cards hands[8];
     int turn;
     int scores[8];
-
+    std::mutex lock;
 };
 
 #endif // HEARTS_HH
