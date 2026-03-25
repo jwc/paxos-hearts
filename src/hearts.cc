@@ -4,6 +4,8 @@ Hearts::Hearts(Paxos & pax) : Printable(), pax(pax), turn(0) {
   for (int i = 0; i < 8; i++) scores[i] = 0;
 
   voting.all = 0; 
+
+  listenerThread = std::thread(&Hearts::listener, this);
 }
 
 int Hearts::isPlayable(Value move) {
@@ -20,18 +22,20 @@ int Hearts::play(Value move) {
 
       if (__builtin_popcount(voting.all) >= 4 && pax.getID() == 0) {
         Value v = { .type = DEAL_T, .player = 0, .data = (int16_t) rand() };
+        fprintf(stderr, "send DEAL_T: %d\n", __builtin_popcount(voting.all));
         pax.makeRequest(v);
       }
       break;
 
     case DEAL_T:
-      //voting.all = 0;
+      voting.all = 0;
+      fprintf(stderr, "recv DEAL_T: %d\n", __builtin_popcount(voting.all));
 
       for (int i = 0; i < 8; i++) hands[i].clear();
       for (int i = 0; i < 52; i++) hands[0].add(i);
 
       hands[0].shuffle(move.raw);
-
+      
       for (int i = 1; i < 4; i++) 
         for (int j = 0; j < 13; j++)
           hands[i].add(hands[0].remove());
@@ -90,4 +94,10 @@ void Hearts::print(int playerPerspective) {
 
   Hearts::refresh();
   lock.unlock();
+}
+
+void Hearts::listener() {
+  while (1) {
+    play(pax.getBuffer().consume());
+  }
 }

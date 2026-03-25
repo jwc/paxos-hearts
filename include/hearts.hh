@@ -34,6 +34,9 @@ class Hearts : public Printable {
 
     Paxos & pax;
     Voting voting;
+
+    std::thread listenerThread;
+    void listener();
 };
 
 #endif // HEARTS_HH
