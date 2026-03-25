@@ -180,3 +180,7 @@ void Cards::shuffle(int32_t seed) {
     SWAP(cards, i, rand() % 52);
 }
 
+void Cards::selectCard(char index) {
+  selected = index;
+}
+

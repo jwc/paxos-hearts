@@ -44,8 +44,6 @@ void Paxos::sendStatelessValue(Value value) {
   outgoing.produce(value);
 }
 
-Buffer<Value> & Paxos::getBuffer() { return outgoing; }
-
 
 // Private functions:
 

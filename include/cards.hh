@@ -63,6 +63,8 @@ class Cards : public Printable {
 
     void printRank(int y, int x, char card);
 
+    void selectCard(char index);
+
   private:
     char cards[52];
     char selected;

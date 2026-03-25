@@ -48,6 +48,7 @@ union Value {
   int32_t raw;
   struct {
     int8_t type;
+    int8_t player;
     int16_t data;
   };
 };

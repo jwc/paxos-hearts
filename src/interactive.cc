@@ -26,10 +26,10 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  //Networking *net = new Localhost(argv[1]);
-  //Paxos *pax = new Paxos(*net);
+  Networking *net = new Localhost(argv[1]);
+  Paxos *pax = new Paxos(*net);
   //Cards * c = new Cards();
-  Hearts * h = new Hearts();
+  Hearts * h = new Hearts(*pax);
   for (int i = 0; i < 4; i++)
     h->hands[i].add(i);
   //mvprintw(35, 0, "# threads %d", std::thread::hardware_concurrency());
@@ -47,6 +47,7 @@ int main(int argc, char** argv) {
     //std::this_thread::yield();
     //producer.lock();
     v.type = getch();
+    fprintf(stderr, "input: %c\n", v.type);
 
     if (v.type == 'r') {
       mvprintw(11, 0, "sz:%d", buf->count());
@@ -55,8 +56,13 @@ int main(int argc, char** argv) {
       h->toggleUnicode();
       h->toggleColor();
     } else if (v.type == 'a') {
-      //c->add(rand() % 52);
       h->hands[rand() % 4].add(rand() % 52);
+    } else if (v.type == 'R') {
+      fprintf(stderr, "calling play()\n");
+      for (char i = 0; i < 4; i++) {
+        Value val = { .type = REQ_DEAL_T, .player = i, .data = (int16_t) rand() };
+        h->play(val);
+      }
     } else if (v.type == '0') {
       currentPlayer = 0;
     } else if (v.type == '1') {

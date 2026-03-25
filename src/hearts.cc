@@ -1,9 +1,9 @@
 #include "header.hh"
 
-Hearts::Hearts() : Printable(), turn(0) {
+Hearts::Hearts(Paxos & pax) : Printable(), pax(pax), turn(0) {
   for (int i = 0; i < 8; i++) scores[i] = 0;
 
-  
+  voting.all = 0; 
 }
 
 int Hearts::isPlayable(Value move) {
@@ -12,17 +12,44 @@ int Hearts::isPlayable(Value move) {
 }
 
 int Hearts::play(Value move) {
-  if (move.type == DEAL_T) {
-    for (int i = 0; i < 8; i++) hands[i].clear();
-    for (int i = 0; i < 52; i++) hands[0].add(i);
-   
-    hands[0].shuffle(move.raw);
+  fprintf(stderr, "play()\n");
+  switch (move.type) {
+    case REQ_DEAL_T:
+      voting.votes[move.player] = 1;
+      fprintf(stderr, "req vote : %d\n", __builtin_popcount(voting.all));
 
-    for (int i = 1; i < 4; i++) 
-      for (int j = 0; j < 13; j++)
-        hands[i].add(hands[0].remove());
+      if (__builtin_popcount(voting.all) >= 4 && pax.getID() == 0) {
+        Value v = { .type = DEAL_T, .player = 0, .data = (int16_t) rand() };
+        pax.makeRequest(v);
+      }
+      break;
 
-  }
+    case DEAL_T:
+      //voting.all = 0;
+
+      for (int i = 0; i < 8; i++) hands[i].clear();
+      for (int i = 0; i < 52; i++) hands[0].add(i);
+
+      hands[0].shuffle(move.raw);
+
+      for (int i = 1; i < 4; i++) 
+        for (int j = 0; j < 13; j++)
+          hands[i].add(hands[0].remove());
+
+      break;
+
+    case SELECT_T:
+      hands[move.player].selectCard(move.data);
+      break;
+
+    case PLAY_T:
+      //voting.all = 0;
+      break;
+
+    default:
+      ;
+  } 
+
   return 1;
 }
 
@@ -58,6 +85,8 @@ void Hearts::print(int playerPerspective) {
     hands[index].printCards(
   }
   */
+
+  mvprintw(sizeY/2, sizeX/2, "votes:%d", __builtin_popcount(voting.all));
 
   Hearts::refresh();
   lock.unlock();

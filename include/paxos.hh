@@ -41,7 +41,14 @@ class Paxos {
      *
      * @return A reference to the buffer of confirmed Values.
      */
-    Buffer<Value> & getBuffer();
+    inline Buffer<Value> & getBuffer() { return outgoing; }
+
+    /**
+     * @brief Gives a reference to the paxos node id.
+     *
+     * @return A reference to the node id.
+     */
+    inline const int & getID() { return id; };
 
 
   private:
