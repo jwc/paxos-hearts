@@ -71,6 +71,18 @@ class Cards : public Printable {
     char numCards;
     uint64_t visibility;
 
+    /**
+     * Using these srand() and rand() implementations for consistancy across nodes. 
+     *
+     * Code for srand() and rand() taken from: 
+     * https://open-std.org/JTC1/SC22/WG14/www/docs/n1256.pdf
+     */
+    unsigned long int next = 1;
+    void srand(unsigned int seed) { next = seed; }
+    inline int rand() {
+      next = next * 1103515245 + 12345;
+      return (unsigned int) (next/65536) % 32768;
+    }
 };
 
 #endif // CARDS_HH
