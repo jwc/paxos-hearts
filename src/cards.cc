@@ -176,8 +176,10 @@ void Cards::printCard(int y, int x, int orientation, char card) {
 void Cards::shuffle(int32_t seed) {
   srand(seed);
 
-  for (int i = 0; i < 52; i++) 
-    SWAP(cards, i, rand() % 52);
+  for (int i = 0; i < numCards; i++) {
+    char index = rand() % 52;
+    SWAP(cards, i, index);
+  }
 }
 
 void Cards::selectCard(char index) {
