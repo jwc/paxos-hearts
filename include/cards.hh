@@ -1,8 +1,6 @@
 #ifndef CARDS_HH
 #define CARDS_HH
 
-#define SWAP(a, b, c) { a[b]^=a[c]; a[c]^=a[b]; a[b]^=a[c]; }
-
 enum Suit {
   SPADES = 0, 
   HEARTS = 1, 
@@ -64,6 +62,8 @@ class Cards : public Printable {
     void printRank(int y, int x, char card);
 
     void selectCard(char index);
+
+    char getSelected() { return selected; };
 
   private:
     char cards[52];

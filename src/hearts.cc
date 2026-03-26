@@ -43,6 +43,10 @@ int Hearts::play(Value move) {
       break;
 
     case SELECT_T:
+      if (move.data < 0) move.data = 0;
+      if (move.data >= hands[move.player].getNumCards()) 
+        move.data = hands[move.player].getNumCards() - 1;
+
       hands[move.player].selectCard(move.data);
       break;
 

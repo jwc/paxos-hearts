@@ -178,7 +178,9 @@ void Cards::shuffle(int32_t seed) {
 
   for (int i = 0; i < numCards; i++) {
     char index = rand() % 52;
-    SWAP(cards, i, index);
+    char tmp = cards[index];
+    cards[index] = cards[i];
+    cards[i] = tmp;
   }
 }
 

@@ -1,6 +1,6 @@
 #include "header.hh"
 
-int currentPlayer = 0;
+char currentPlayer = 0;
 
 //void foo(Cards * c, Buffer<Value> * buf) {
 void foo(Hearts * h, Buffer<Value> * buf) {
@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
 
     if (v.type == 'r') {
       mvprintw(11, 0, "sz:%d", buf->count());
+      h->hands[currentPlayer].remove();
       //std::this_thread::yield();
     } else if (v.type == 't') {
       h->toggleUnicode();
@@ -72,7 +73,17 @@ int main(int argc, char** argv) {
     } else if (v.type == '3') {
       currentPlayer = 3;
     } else if (v.type == '4') {
-      currentPlayer = 4; 
+      currentPlayer = 0; 
+    } else if (v.type == 'l') {
+      Value val = { .type=SELECT_T, 
+                    .player=currentPlayer, 
+                    .data=h->hands[currentPlayer].getSelected() + 1 };
+      h->play(val);
+    } else if (v.type == 'h') {
+      Value val = { .type=SELECT_T, 
+                    .player=currentPlayer, 
+                    .data=(int16_t) h->hands[currentPlayer].getSelected() - 1 };
+      h->play(val);
     }
     mvprintw(0, 0, "%d main() req(%c/%d)\n", count++, v.type, v.type);
     //pax->makeRequest(v);
