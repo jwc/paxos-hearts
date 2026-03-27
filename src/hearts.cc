@@ -11,25 +11,25 @@ Hearts::Hearts(Paxos & pax) : Printable(), pax(pax), turn(0) {
 }
 
 int Hearts::isPlayable(Value move) {
-  if (move.type == DEAL_T) return 1;
+  if (move.type == START_T) return 1;
   return 1;
 }
 
 int Hearts::play(Value move) {
   switch (move.type) {
-    case REQ_DEAL_T:
-      fprintf(stderr, "recv REQ_DEAL_T: %d\n", __builtin_popcount(voting.all));
+    case REQ_START_T:
+      fprintf(stderr, "recv REQ_START_T: %d\n", __builtin_popcount(voting.all));
       voting.votes[move.player] = 1;
 
       if (__builtin_popcount(voting.all) >= 4 && pax.getID() == 0) {
-        Value v = { .type = DEAL_T, .player = 0, .data = (int16_t) rand() };
-        fprintf(stderr, "send DEAL_T: %d\n", __builtin_popcount(voting.all));
+        Value v = { .type = START_T, .player = 0, .data = (int16_t) rand() };
+        fprintf(stderr, "send START_T: %d\n", __builtin_popcount(voting.all));
         pax.makeRequest(v);
       }
       break;
 
-    case DEAL_T:
-      fprintf(stderr, "recv DEAL_T: \n");
+    case START_T:
+      fprintf(stderr, "recv START_T: \n");
       voting.all = 0;
 
       for (int i = 0; i < 8; i++) hands[i].clear();
@@ -43,6 +43,7 @@ int Hearts::play(Value move) {
       
       phase = 0;
       turn = 0;
+      topCardPlayer = -1;
 
       break;
 
@@ -85,20 +86,84 @@ int Hearts::play(Value move) {
 
       } else {
         // Playing phase.
+        char card = hands[move.player].getCard(move.data);
        
-        // First move of the trick - Must be the 2 of clubs. 
-        if (turn == -1) {
-          char card = hands[move.player].getCard(move.data);
+        if (turn == -1 && hands[move.player].getNumCards() == 13) {
+          // First move of the hand - Must be the 2 of clubs. 
           if (Cards::getSuit(card) == CLUBS && Cards::getRank(card) == Two) {
-          //if (hands[move.player].getCard(move.data) == 0) {
             hands[move.player + 4].add(hands[move.player].remove(move.data));
             turn = (move.player + 1) % 4;
+            topCardPlayer = move.player;
+            leadingSuit = Cards::getSuit(card);
+            leadingRank = Cards::getRank(card);
+
+          } else return 0;
+
+        
+        } else if (turn == -1 && move.player == topCardPlayer) {
+          // Start of a new trick.
+          // TODO: Stop point cards from being lead if hearts not yet broken.
+          hands[move.player + 4].add(hands[move.player].remove(move.data));
+          topCardPlayer = move.player;
+          leadingSuit = Cards::getSuit(card);
+          leadingRank = Cards::getRank(card);
+          turn = (move.player + 1) % 4;
+
+        } else if (turn == move.player) {
+          // Must follow suit if possible. 
+          // TODO: Stop point cards from being played on the 1st trick.
+          if (hands[move.player].hasSuit(leadingSuit) 
+              && Cards::getSuit(card) == leadingSuit) {
+            hands[move.player + 4].add(hands[move.player].remove(move.data));
+            turn = (move.player + 1) % 4;
+            if (Cards::getRank(card) > leadingRank) {
+              leadingRank = Cards::getRank(card); 
+              topCardPlayer = move.player;
+            }
+
+          } else if ( ! hands[move.player].hasSuit(leadingSuit)) {
+            hands[move.player + 4].add(hands[move.player].remove(move.data));
+            turn = (move.player + 1) % 4;
+
+          } else return 0;
+        }
+
+        char trickFinished = 1; 
+        char pointsInTrick = 0;
+        for (int i = 4; i < 8; i++) { 
+          if (hands[i].getNumCards() == 0) {
+            trickFinished = 0;
+            break;
+          }
+          pointsInTrick += Cards::getPoints(hands[i].getCard(0));
+        }
+        if (trickFinished) {
+          scores[topCardPlayer + 4] += pointsInTrick;
+          for (int i = 4; i < 8; i++) hands[i].clear();
+          turn = -1;
+
+          if (hands[0].getNumCards() == 0) {
+            // Hand finished
+
+            for (int i = 0; i < 4; i++) {
+              scores[i] += scores[i + 4];
+              scores[i + 4] = 0;
+            }
+
+            phase++;
+            if (phase == 7) phase++; // Check for no pass round.
+
+            // Re-deal cards.  
+            for (char i = 0; i < 52; i++) hands[0].add(i);
+            hands[0].shuffle(rand());
+            for (int i = 1; i < 4; i++)
+              for (int j = 0; j < 13; j++) 
+                hands[i].add(hands[0].remove());
+
+            //TODO: Add end of game detection.
           }
         }
 
-        if (turn == move.player) {
-          ;
-        }
       }
 
       break;
@@ -119,30 +184,30 @@ void Hearts::print(int playerPerspective) {
   hands[(2 + playerPerspective) % 4].printCards(        2, sizeX / 2, 2);
   hands[(3 + playerPerspective) % 4].printCards(sizeY / 2, sizeX - 5, 3);
 
-  hands[(0 + playerPerspective) % 4 + 4].printCards(sizeY - 13, sizeX / 2, 0);
-  hands[(1 + playerPerspective) % 4 + 4].printCards(sizeY / 2,         14, 1);
-  hands[(2 + playerPerspective) % 4 + 4].printCards(        12, sizeX / 2, 2);
-  hands[(3 + playerPerspective) % 4 + 4].printCards(sizeY / 2, sizeX - 15, 3);
+  hands[(0 + playerPerspective) % 4 + 4].printCards(sizeY/2 + 10, sizeX/2, 0);
+  hands[(1 + playerPerspective) % 4 + 4].printCards(sizeY/2, sizeX/2 - 20, 1);
+  hands[(2 + playerPerspective) % 4 + 4].printCards(sizeY/2 - 10, sizeX/2, 2);
+  hands[(3 + playerPerspective) % 4 + 4].printCards(sizeY/2, sizeX/2 + 20, 3);
 
-  /*
-  mvprintw(sizeY - 6, sizeX / 2, "Score: %d (%d)", 
+  mvprintw(sizeY - 8, sizeX / 2, "Score: %d (%d)", 
       scores[(0 + playerPerspective) % 4], 
       scores[((0 + playerPerspective) % 4) + 4]);
 
-  mvprintw(sizeY / 2,         7, "Score: %d (%d)", 
+  mvprintw(sizeY / 2,         9, "Score: %d (%d)", 
       scores[(1 + playerPerspective) % 4], 
       scores[((1 + playerPerspective) % 4) + 4]);
 
-  mvprintw(        5, sizeX / 2, "Score: %d (%d)", 
+  mvprintw(        7, sizeX / 2, "Score: %d (%d)", 
       scores[(2 + playerPerspective) % 4], 
       scores[((2 + playerPerspective) % 4) + 4]);
 
-  mvprintw(sizeY / 2, sizeX - 20, "Score: %d (%d)", 
+  mvprintw(sizeY / 2, sizeX - 22, "Score: %d (%d)", 
       scores[(3 + playerPerspective) % 4], 
       scores[((3 + playerPerspective) % 4) + 4]);
-  */
 
   mvprintw(0, 0, "Phase: %d  Turn: %d", phase, turn);
+  mvprintw(1, 0, "Current Player: %d", playerPerspective);
+  mvprintw(2, 0, "Leading Player: %d", topCardPlayer);
 
   /*
   for (int i = 0; i < 4; i++) {

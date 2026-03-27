@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     } else if (v.type == 'R') {
       fprintf(stderr, "calling play()\n");
       for (char i = 0; i < 4; i++) {
-        Value val = { .type = REQ_DEAL_T, .player = i, .data = (int16_t) rand() };
+        Value val = { .type = REQ_START_T, .player = i, .data = (int16_t) rand() };
         h->play(val);
       }
     } else if (v.type == '0') {

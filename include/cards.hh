@@ -49,7 +49,11 @@ class Cards : public Printable {
 
     static inline Rank getRank(char card) { return static_cast<Rank>(card % 13); };
 
-    static inline int getPoints(char card);
+    static inline int getPoints(char card) {
+      if (getSuit(card) == HEARTS) return 1;
+      if (getSuit(card) == SPADES && getRank(card) == Queen) return 13;
+      return 0;
+    };
 
     inline void toggleVisibility() { visibility ^= 1; };
 

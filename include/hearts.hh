@@ -1,8 +1,8 @@
 #ifndef HEARTS_HH
 #define HEARTS_HH
 
-#define REQ_DEAL_T 0
-#define DEAL_T 1
+#define REQ_START_T 0
+#define START_T 1
 #define SELECT_T 2
 #define PLAY_T 3
 
@@ -30,6 +30,9 @@ class Hearts : public Printable {
     Cards hands[8];
     char phase;
     char turn;
+    char topCardPlayer; 
+    Suit leadingSuit;
+    Rank leadingRank;
     int scores[8];
     std::mutex lock;
 

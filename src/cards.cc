@@ -195,9 +195,11 @@ int Cards::hasSuit(Suit suit) {
   return 0;
 }
 
-int Cards::getPoints(char card) {
+/*
+inline int Cards::getPoints(char card) {
   if (getSuit(card) == HEARTS) return 1;
   if (getSuit(card) == SPADES && getRank(card) == Queen) return 13;
   return 0;
 }
+*/
 
