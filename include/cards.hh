@@ -2,9 +2,9 @@
 #define CARDS_HH
 
 enum Suit {
-  SPADES = 0, 
+  SPADES = 2, 
   HEARTS = 1, 
-  CLUBS = 2, 
+  CLUBS = 0, 
   DIAMONDS = 3
 };
 
@@ -45,9 +45,11 @@ class Cards : public Printable {
 
     inline char getCard(char index) { return index < numCards ? cards[index] : -1; };
 
-    inline Suit getSuit(char card) { return static_cast<Suit>(card / 13); };
+    static inline Suit getSuit(char card) { return static_cast<Suit>(card / 13); };
 
-    inline Rank getRank(char card) { return static_cast<Rank>(card % 13); };
+    static inline Rank getRank(char card) { return static_cast<Rank>(card % 13); };
+
+    static inline int getPoints(char card);
 
     inline void toggleVisibility() { visibility ^= 1; };
 
@@ -64,6 +66,8 @@ class Cards : public Printable {
     void selectCard(char index);
 
     char getSelected() { return selected; };
+
+    int hasSuit(Suit suit);
 
   private:
     char cards[52];

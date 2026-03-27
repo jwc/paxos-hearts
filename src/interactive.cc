@@ -78,12 +78,19 @@ int main(int argc, char** argv) {
       Value val = { .type=SELECT_T, 
                     .player=currentPlayer, 
                     .data=h->hands[currentPlayer].getSelected() + 1 };
-      h->play(val);
+      pax->sendStatelessValue(val);
     } else if (v.type == 'h') {
       Value val = { .type=SELECT_T, 
                     .player=currentPlayer, 
                     .data=(int16_t) h->hands[currentPlayer].getSelected() - 1 };
-      h->play(val);
+      pax->sendStatelessValue(val);
+    } else if (v.type == ' ') {
+      //if (count != 0) continue;
+      Value val = { .type=PLAY_T,
+                    .player=currentPlayer, 
+                    .data=(int16_t) h->hands[currentPlayer].getSelected() };
+      //pax->sendStatelessValue(val);
+      pax->makeRequest(val);
     }
     mvprintw(0, 0, "%d main() req(%c/%d)\n", count++, v.type, v.type);
     //pax->makeRequest(v);

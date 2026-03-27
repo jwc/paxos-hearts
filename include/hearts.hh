@@ -28,7 +28,8 @@ class Hearts : public Printable {
 
   //private:
     Cards hands[8];
-    int turn;
+    char phase;
+    char turn;
     int scores[8];
     std::mutex lock;
 

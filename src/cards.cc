@@ -188,3 +188,16 @@ void Cards::selectCard(char index) {
   selected = index;
 }
 
+int Cards::hasSuit(Suit suit) {
+  for (int i = 0; i < numCards; i++) 
+    if (getSuit(cards[i]) == suit)
+      return 1;
+  return 0;
+}
+
+int Cards::getPoints(char card) {
+  if (getSuit(card) == HEARTS) return 1;
+  if (getSuit(card) == SPADES && getRank(card) == Queen) return 13;
+  return 0;
+}
+
