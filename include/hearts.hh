@@ -31,6 +31,7 @@ class Hearts : public Printable {
     char phase;
     char turn;
     char topCardPlayer; 
+    char firstTrick;
     Suit leadingSuit;
     Rank leadingRank;
     int scores[8];

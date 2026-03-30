@@ -49,6 +49,7 @@ int Hearts::play(Value move) {
       turn = 0;
       topCardPlayer = -1;
       gameFinished = 0;
+      firstTrick = 1;
 
       break;
 
@@ -95,7 +96,11 @@ int Hearts::play(Value move) {
         // Playing phase.
         char card = hands[move.player].getCard(move.data);
        
-        if (turn == -1 && hands[move.player].getNumCards() == 13) {
+        if (firstTrick && Cards::getPoints(card)) {
+          // Ensure no point cards are played on the first trick.
+          return 0;
+
+        } else if (turn == -1 && hands[move.player].getNumCards() == 13) {
           // First move of the hand - Must be the 2 of clubs. 
           if (Cards::getSuit(card) == CLUBS && Cards::getRank(card) == Two) {
             hands[move.player + 4].add(hands[move.player].remove(move.data));
@@ -118,7 +123,6 @@ int Hearts::play(Value move) {
 
         } else if (turn == move.player) {
           // Must follow suit if possible. 
-          // TODO: Stop point cards from being played on the 1st trick.
           if (hands[move.player].hasSuit(leadingSuit) 
               && Cards::getSuit(card) == leadingSuit) {
             hands[move.player + 4].add(hands[move.player].remove(move.data));
@@ -145,6 +149,7 @@ int Hearts::play(Value move) {
           pointsInTrick += Cards::getPoints(hands[i].getCard(0));
         }
         if (trickFinished) {
+          firstTrick = 0;
           scores[topCardPlayer + 4] += pointsInTrick;
           for (int i = 4; i < 8; i++) hands[i].clear();
           turn = -1;
