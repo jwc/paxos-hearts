@@ -38,7 +38,6 @@ char Cards::remove(char index) {
 }
 
 void Cards::printCards(int y, int x, int orientation) {
-  mvprintw(sizeY/2, sizeX/2, "orientation:%d", orientation);
   if ((orientation % 2) == 0) {
     for (int i = 0; i < numCards; i++) {
       printCard(y, x + ((i + i - numCards) * 2), orientation, cards[i]);

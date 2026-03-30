@@ -34,6 +34,7 @@ class Hearts : public Printable {
     Suit leadingSuit;
     Rank leadingRank;
     int scores[8];
+    char gameFinished;
     std::mutex lock;
 
     Paxos & pax;

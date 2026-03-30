@@ -1,6 +1,6 @@
 #include "header.hh"
 
-Hearts::Hearts(Paxos & pax) : Printable(), pax(pax), turn(0) {
+Hearts::Hearts(Paxos & pax) : Printable(), pax(pax), turn(0), gameFinished(0) {
   for (int i = 0; i < 8; i++) scores[i] = 0;
 
   voting.all = 0; 
@@ -32,7 +32,11 @@ int Hearts::play(Value move) {
       fprintf(stderr, "recv START_T: \n");
       voting.all = 0;
 
-      for (int i = 0; i < 8; i++) hands[i].clear();
+      for (int i = 0; i < 8; i++) {
+        hands[i].clear();
+        scores[i] = 99;
+      }
+
       for (int i = 0; i < 52; i++) hands[0].add(i);
 
       hands[0].shuffle(move.raw);
@@ -44,11 +48,13 @@ int Hearts::play(Value move) {
       phase = 0;
       turn = 0;
       topCardPlayer = -1;
+      gameFinished = 0;
 
       break;
 
     case SELECT_T:
       fprintf(stderr, "recv SELECT_T:\n");
+      if (gameFinished) break;
       if (move.data < 0) move.data = 0;
       if (move.data >= hands[move.player].getNumCards()) 
         move.data = hands[move.player].getNumCards() - 1;
@@ -58,6 +64,7 @@ int Hearts::play(Value move) {
 
     case PLAY_T:
       fprintf(stderr, "recv PLAY_T: \n");
+      if (gameFinished) break;
       if (move.data < 0) move.data = 0;
       if (move.data >= hands[move.player].getNumCards()) 
       voting.all = 0;
@@ -148,7 +155,10 @@ int Hearts::play(Value move) {
             for (int i = 0; i < 4; i++) {
               scores[i] += scores[i + 4];
               scores[i + 4] = 0;
+              if (scores[i] >= 100) gameFinished = 1;
             }
+
+            if (gameFinished) break;
 
             phase++;
             if (phase == 7) phase++; // Check for no pass round.
@@ -159,8 +169,6 @@ int Hearts::play(Value move) {
             for (int i = 1; i < 4; i++)
               for (int j = 0; j < 13; j++) 
                 hands[i].add(hands[0].remove());
-
-            //TODO: Add end of game detection.
           }
         }
 
@@ -217,7 +225,8 @@ void Hearts::print(int playerPerspective) {
   }
   */
 
-  mvprintw(sizeY/2, sizeX/2, "votes:%d", __builtin_popcount(voting.all));
+  mvprintw(sizeY/2 - 1, sizeX/2, "votes:%d", __builtin_popcount(voting.all));
+  if (gameFinished) mvprintw(sizeY/2, sizeX/2, "Game Over. ");
 
   Hearts::refresh();
   lock.unlock();
