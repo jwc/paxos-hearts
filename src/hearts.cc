@@ -34,7 +34,7 @@ int Hearts::play(Value move) {
 
       for (int i = 0; i < 8; i++) {
         hands[i].clear();
-        scores[i] = 99;
+        scores[i] = 0;
       }
 
       for (int i = 0; i < 52; i++) hands[0].add(i);
@@ -50,6 +50,7 @@ int Hearts::play(Value move) {
       topCardPlayer = -1;
       gameFinished = 0;
       firstTrick = 1;
+      heartsBroken = 0;
 
       break;
 
@@ -114,7 +115,18 @@ int Hearts::play(Value move) {
         
         } else if (turn == -1 && move.player == topCardPlayer) {
           // Start of a new trick.
-          // TODO: Stop point cards from being lead if hearts not yet broken.
+          
+          if ( ! heartsBroken && Cards::getPoints(card)) {
+            // If trying to play a point-card before hearts have been broken, 
+            // check that no non-point-cards are in the player's hand.
+            for (int i = 0; i < hands[move.player].getNumCards(); i++) {
+              if (Cards::getPoints(hands[move.player].getCard(i)) == 0) {
+                return 0;
+              }
+            }
+            heartsBroken = 1;
+          }
+
           hands[move.player + 4].add(hands[move.player].remove(move.data));
           topCardPlayer = move.player;
           leadingSuit = Cards::getSuit(card);
@@ -135,6 +147,7 @@ int Hearts::play(Value move) {
           } else if ( ! hands[move.player].hasSuit(leadingSuit)) {
             hands[move.player + 4].add(hands[move.player].remove(move.data));
             turn = (move.player + 1) % 4;
+            if ( ! heartsBroken && Cards::getPoints(card)) heartsBroken = 1;
 
           } else return 0;
         }
@@ -151,6 +164,7 @@ int Hearts::play(Value move) {
         if (trickFinished) {
           firstTrick = 0;
           scores[topCardPlayer + 4] += pointsInTrick;
+          //if (pointsInTrick) heartsBroken = 1;
           for (int i = 4; i < 8; i++) hands[i].clear();
           turn = -1;
 
@@ -221,6 +235,7 @@ void Hearts::print(int playerPerspective) {
   mvprintw(0, 0, "Phase: %d  Turn: %d", phase, turn);
   mvprintw(1, 0, "Current Player: %d", playerPerspective);
   mvprintw(2, 0, "Leading Player: %d", topCardPlayer);
+  mvprintw(3, 0, "Hearts Broken: %d", heartsBroken);
 
   /*
   for (int i = 0; i < 4; i++) {
