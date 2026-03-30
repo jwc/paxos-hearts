@@ -225,7 +225,7 @@ void Hearts::print(int playerPerspective) {
   }
   */
 
-  mvprintw(sizeY/2 - 1, sizeX/2, "votes:%d", __builtin_popcount(voting.all));
+  if (voting.all) mvprintw(sizeY/2 - 1, sizeX/2, "votes:%d", __builtin_popcount(voting.all));
   if (gameFinished) mvprintw(sizeY/2, sizeX/2, "Game Over. ");
 
   Hearts::refresh();

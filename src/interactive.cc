@@ -50,9 +50,10 @@ int main(int argc, char** argv) {
     fprintf(stderr, "input: %c\n", v.type);
 
     if (v.type == 'r') {
-      mvprintw(11, 0, "sz:%d", buf->count());
-      h->hands[currentPlayer].remove();
-      //std::this_thread::yield();
+        Value val = { .type = REQ_START_T, 
+          .player = currentPlayer, 
+          .data = (int16_t) rand() };
+        h->play(val);
     } else if (v.type == 't') {
       h->toggleUnicode();
       h->toggleColor();
