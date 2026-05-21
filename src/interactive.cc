@@ -8,6 +8,12 @@ int main(int argc, char** argv) {
   }
 
   Networking *net = new Localhost(argv[1]);
+
+  for (int i = 2; i < argc; i++) {
+    fprintf(stderr, "ARG: %s\n", argv[i]);
+    net->addNode(argv[i]);
+  }
+
   Paxos *pax = new Paxos(*net);
   Hearts * h = new Hearts(*pax);
   for (int i = 0; i < 4; i++)
@@ -35,14 +41,16 @@ int main(int argc, char** argv) {
         val = { .type = REQ_START_T, 
                 .player = currentPlayer, 
                 .data = (int16_t) rand() };
-        h->play(val);
+        //h->play(val);
+        pax->makeRequest(val);
         break;
 
       case 'R':
         fprintf(stderr, "calling play()\n");
         for (char i = 0; i < 4; i++) {
           val = { .type = REQ_START_T, .player = i, .data = (int16_t) rand() };
-          h->play(val);
+          //h->play(val);
+          pax->makeRequest(val);
         }
         break;
 

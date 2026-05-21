@@ -203,6 +203,7 @@ int Hearts::play(Value move) {
 }
 
 void Hearts::print(int playerPerspective) {
+  lastPrintedPlayer = playerPerspective;
   lock.lock();
   Hearts::clear();
 
@@ -255,5 +256,6 @@ void Hearts::print(int playerPerspective) {
 void Hearts::listener() {
   while (1) {
     play(pax.getBuffer().consume());
+    print(lastPrintedPlayer);
   }
 }

@@ -39,6 +39,8 @@ class Hearts : public Printable {
     char gameFinished;
     std::mutex lock;
 
+    char lastPrintedPlayer;
+
     Paxos & pax;
     Voting voting;
 
