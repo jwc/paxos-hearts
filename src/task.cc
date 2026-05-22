@@ -2,9 +2,11 @@
 
 // Task:
 
-void Task::enqueueTask() {
-  if (this->type == Type::NON_BLOCKING) taskManager.enqueue(this);
-}
+Task* Task::create() { return new Task(); }
+
+void Task::enqueueTask() { taskManager.enqueue(this); }
+
+void Task::end() { taskManager.end(); }
 
 // TaskManager: 
 
@@ -20,20 +22,37 @@ Task::TaskManager::TaskManager() {
 }
 
 void Task::TaskManager::worker(Type type) {
+  Task *task = nullptr;
+
   if (type == Type::NON_BLOCKING) {
     while (1) {
+      if (task != nullptr) task->executeTask();
+
       std::unique_lock<std::mutex> lock(nonblockingLock);
       nonblockingCV.wait(lock, [&] { 
-          return ( ! nonblockingTasks.empty()) || shouldEnd;
+        return ( ! nonblockingTasks.empty()) || shouldEnd;
       });
 
       if (shouldEnd) return;
 
-      printf("Worker\n");
-      Task *task = nonblockingTasks.back();
+      task = nonblockingTasks.back();
       nonblockingTasks.pop_back();
+    }
+  } else {
+    while (1) {
+      if (task != nullptr) task->executeTask();
 
-      task->executeTask();
+      std::unique_lock<std::mutex> lock(blockingLock);
+      blockingThreadsWaiting++;
+      blockingCV.wait(lock, [&] { 
+        return ( ! blockingTasks.empty()) || shouldEnd; 
+      });
+      blockingThreadsWaiting--;
+
+      if (shouldEnd) return;
+
+      task = blockingTasks.back();
+      blockingTasks.pop_back();
     }
   }
 }
@@ -43,19 +62,48 @@ void Task::TaskManager::enqueue(Task *task) {
     std::lock_guard<std::mutex> lock(nonblockingLock);
 
     nonblockingTasks.push_front(task);
-    printf("Enqueued. %d\n", nonblockingThreadPool.size());
 
     nonblockingCV.notify_one();
-  } 
+  } else {
+    std::lock_guard<std::mutex> lock(blockingLock);
+
+
+    blockingTasks.push_front(task);
+    
+    if (blockingThreadsWaiting > 0) {
+      blockingCV.notify_one();
+    } else if (! shouldEnd) {
+      std::thread t(&TaskManager::worker, this, Type::BLOCKING);
+      blockingThreadPool.push_back(move(t));
+    }
+  }
 }
 
 void Task::TaskManager::end() { 
+  printf("nb:%d, b:%d (%d)\n", nonblockingThreadPool.size(), blockingThreadPool.size(), blockingThreadsWaiting);
+
   shouldEnd = true; 
   nonblockingCV.notify_all();
+  blockingCV.notify_all();
 
   while ( ! nonblockingThreadPool.empty()) {
     nonblockingThreadPool[0].join();
     nonblockingThreadPool.pop_front();
+  }
+
+  while ( ! blockingThreadPool.empty()) {
+    blockingThreadPool[0].join();
+    blockingThreadPool.pop_front();
+  }
+  
+  while ( ! nonblockingTasks.empty()) {
+    delete nonblockingTasks.back();
+    nonblockingTasks.pop_back();
+  }
+
+  while ( ! blockingTasks.empty()) {
+    delete blockingTasks.back();
+    blockingTasks.pop_back(); 
   }
 }
 
@@ -63,13 +111,14 @@ void Task::TaskManager::end() {
 
 class OtherTask : Task {
 private:
-  OtherTask() : Task(Type::NON_BLOCKING) {;}
+  OtherTask() : Task(Type::BLOCKING) {;}
 
   ~OtherTask() {}
 
   void executeTask() override {
     printf("Ran OtherTask\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    OtherTask::create();
     delete this;
   } 
 
@@ -84,16 +133,14 @@ int main() {
   //Task task4 = Task();
   Task *task5 = Task::create();
   OtherTask *task6 = OtherTask::create();
+ 
   
-  //task->enqueueTask();
-  //task2->enqueueTask();
-  //task->enqueueTask();
-  //task3.enqueueTask();
+  //for (int i = 0; i < 5; i++) {
+    //OtherTask::create();
+  //}
+  for (int i = 0; i < 5; i++) Task::create();
 
-  //delete task;
-  //delete task2;
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
   printf("main ending\n");
 
   Task::end();

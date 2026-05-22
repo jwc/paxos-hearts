@@ -13,11 +13,11 @@ class Task {
 public:
   enum Type { BLOCKING, NON_BLOCKING };
 
-  static Task * create() { return new Task(); }
-
-  static void end() { taskManager.end(); }
+  static Task* create(); 
 
   void enqueueTask(); 
+
+  static void end(); 
 
 protected:
   enum Type type;
@@ -30,6 +30,7 @@ protected:
 
   virtual void executeTask() { 
     printf("Ran Task\n"); 
+    
     delete this;
   }
 
@@ -49,6 +50,13 @@ private:
     std::condition_variable nonblockingCV;
     const static int        maxPoolSize = 16;
     bool                    shouldEnd = false;
+
+    std::deque<Task*>       blockingTasks;
+    std::deque<std::thread> blockingThreadPool;
+    std::mutex              blockingLock;
+    std::condition_variable blockingCV;
+    int                     blockingThreadsWaiting = 0;
+
 
     void worker(Type type);
   } taskManager;
