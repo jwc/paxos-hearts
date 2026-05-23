@@ -8,42 +8,46 @@
 
 #include <stdio.h>
 #include <chrono>
+#include <queue>
 
 class Task {
 public:
   enum Type { BLOCKING, NON_BLOCKING };
 
-  static Task* create(); 
-
-  void enqueueTask(); 
+  virtual void ready() final;
 
   static void end(); 
 
 protected:
-  enum Type type;
+  explicit Task(Type type = Type::NON_BLOCKING, int delay = 0);
 
-  Task() : type(Type::NON_BLOCKING) { taskManager.enqueue(this); }
+  virtual ~Task() = default;
 
-  Task(Type type) : type(type) { taskManager.enqueue(this); }
-
-  ~Task() {}
-
-  virtual void executeTask() { 
-    printf("Ran Task\n"); 
-    
-    delete this;
-  }
+  virtual void executeTask() = 0;
 
 private:
+  enum Type type;
+  int delay;
+
+  friend class TimerTask;
+
   static class TaskManager {
   public:
     TaskManager();
 
     void enqueue(Task *task);
+    
+    void enqueue(Task *task, int delay);
+
+    void updateWaitingTasks();
 
     void end();
 
   private:
+    using clock = std::chrono::high_resolution_clock;
+    using p = std::pair<std::chrono::time_point<clock>, Task*>;
+    using min_heap = std::priority_queue<p, std::deque<p>, std::greater<p>>;
+
     std::deque<Task*>       nonblockingTasks;
     std::deque<std::thread> nonblockingThreadPool;
     std::mutex              nonblockingLock;
@@ -57,9 +61,22 @@ private:
     std::condition_variable blockingCV;
     int                     blockingThreadsWaiting = 0;
 
+    min_heap                waitingTasks;
+    std::mutex              waitingLock;
 
     void worker(Type type);
   } taskManager;
+};
+
+class TimerTask : Task {
+private:
+  friend class Task::TaskManager;
+
+  TimerTask();
+
+  static void create(); 
+
+  void executeTask() override;
 };
 
 #endif // TASK_HH

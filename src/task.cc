@@ -2,9 +2,15 @@
 
 // Task:
 
-Task* Task::create() { return new Task(); }
+Task::Task(Type type, int delay) : type(type), delay(delay) {}
 
-void Task::enqueueTask() { taskManager.enqueue(this); }
+void Task::ready() {
+  if (delay == 0) 
+    taskManager.enqueue(this);
+  else 
+    taskManager.enqueue(this, delay);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
 
 void Task::end() { taskManager.end(); }
 
@@ -19,14 +25,19 @@ Task::TaskManager::TaskManager() {
     std::thread t(&TaskManager::worker, this, Type::NON_BLOCKING);
     nonblockingThreadPool.push_back(move(t));
   }
+
+  TimerTask::create();
 }
 
 void Task::TaskManager::worker(Type type) {
   Task *task = nullptr;
 
   if (type == Type::NON_BLOCKING) {
-    while (1) {
-      if (task != nullptr) task->executeTask();
+    while (true) {
+      if (task != nullptr) {
+        task->executeTask();
+        delete task;
+      }
 
       std::unique_lock<std::mutex> lock(nonblockingLock);
       nonblockingCV.wait(lock, [&] { 
@@ -39,8 +50,11 @@ void Task::TaskManager::worker(Type type) {
       nonblockingTasks.pop_back();
     }
   } else {
-    while (1) {
-      if (task != nullptr) task->executeTask();
+    while (true) {
+      if (task != nullptr) {
+        task->executeTask();
+        delete task;
+      }
 
       std::unique_lock<std::mutex> lock(blockingLock);
       blockingThreadsWaiting++;
@@ -67,7 +81,6 @@ void Task::TaskManager::enqueue(Task *task) {
   } else {
     std::lock_guard<std::mutex> lock(blockingLock);
 
-
     blockingTasks.push_front(task);
     
     if (blockingThreadsWaiting > 0) {
@@ -79,9 +92,27 @@ void Task::TaskManager::enqueue(Task *task) {
   }
 }
 
-void Task::TaskManager::end() { 
-  printf("nb:%d, b:%d (%d)\n", nonblockingThreadPool.size(), blockingThreadPool.size(), blockingThreadsWaiting);
+void Task::TaskManager::enqueue(Task *task, int delay) {
+  std::lock_guard<std::mutex> lock(waitingLock);
 
+  waitingTasks.push({std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(delay), task});
+}
+
+void Task::TaskManager::updateWaitingTasks() {
+  using std::chrono::time_point;
+  using std::chrono::high_resolution_clock;
+  using std::chrono::milliseconds;
+
+  time_point<high_resolution_clock> timestamp = high_resolution_clock::now();
+
+  std::lock_guard<std::mutex> lock(waitingLock);
+  while (( ! waitingTasks.empty()) && waitingTasks.top().first < timestamp) {
+    this->enqueue(waitingTasks.top().second);
+    waitingTasks.pop();
+  }
+}
+
+void Task::TaskManager::end() { 
   shouldEnd = true; 
   nonblockingCV.notify_all();
   blockingCV.notify_all();
@@ -105,46 +136,56 @@ void Task::TaskManager::end() {
     delete blockingTasks.back();
     blockingTasks.pop_back(); 
   }
+
+  while ( ! waitingTasks.empty()) {
+    delete waitingTasks.top().second;
+    waitingTasks.pop();
+  }
+}
+
+// TimerTask:
+
+TimerTask::TimerTask() : Task(Type::BLOCKING, 0) { ready(); }
+
+void TimerTask::create() { new TimerTask(); }
+
+void TimerTask::executeTask() {
+  this->taskManager.updateWaitingTasks();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  TimerTask::create();
 }
 
 // Temporary: 
 
 class OtherTask : Task {
 private:
-  OtherTask() : Task(Type::BLOCKING) {;}
-
-  ~OtherTask() {}
+  OtherTask() : Task(Type::BLOCKING, 250) { ready(); }
 
   void executeTask() override {
     printf("Ran OtherTask\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
     OtherTask::create();
-    delete this;
   } 
 
 public:
-  static OtherTask * create() { return new OtherTask(); }
+  static void create() { new OtherTask(); }
 };
 
 int main() {
-  //OtherTask *task = new OtherTask(Task::Type::NON_BLOCKING);
-  //Task *task2 = new Task(Task::Type::NON_BLOCKING);
-  //OtherTask task3 = OtherTask();
-  //Task task4 = Task();
-  Task *task5 = Task::create();
-  OtherTask *task6 = OtherTask::create();
- 
+  //Task::create(150000000);
+  //Task::create(500);
+  //Task::create(1500);
+  printf("Created\n");
+  OtherTask::create();
   
-  //for (int i = 0; i < 5; i++) {
-    //OtherTask::create();
-  //}
-  for (int i = 0; i < 5; i++) Task::create();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  //for (int i = 0; i < 5; i++) { OtherTask::create(); }
+  //for (int i = 0; i < 5; i++) Task::create();
+  
+  std::this_thread::sleep_for(std::chrono::milliseconds(6000));
   printf("main ending\n");
-
   Task::end();
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   printf("main returning\n");
   return 0;
