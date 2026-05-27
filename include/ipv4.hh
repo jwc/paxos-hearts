@@ -1,77 +1,149 @@
 #ifndef IPV4_HH
 #define IPV4_HH
 
-union MyAddress {
-  uint32_t address;
-  struct {
-    uint8_t b1, b2, b3, b4;
-  };
+class Networking {
+public:
+  Networking (std::string name, std::string address);
+private: 
 };
 
 /**
  * A network object for connecting with other nodes via IPv4. 
  */
-
 class IPv4 : public Networking {
-  public:
-    /**
-     * @brief The constructor for a IPv4 network node. 
-     *
-     * @param addrAndPort The IP address and port to be used for accepting 
-     *          incoming connections. Must be in the format "#.#.#.#:#"
-     */
-    explicit IPv4(char * addrAndPort); 
+public:
+  static const uint16_t DEFAULT_PORT = 9876;
 
-    ~IPv4() { ; };
+  explicit IPv4(std::string name, std::string address);
 
-    /**
-     * @brief Used for adding nodes to the network.
-     *
-     * @param addrAndPort The IP address and port of the other node. 
-     *          Must be in the format "#.#.#.#:#"
-     */
-    virtual void addNode(char * addrAndPort);
+protected:
 
-    /**
-     * @brief Used to send messages to other nodes on the network.
-     */
-    void send(int, Message *);
-
-    Buffer<Message *> & getBuffer() { return incoming; }
-
-    void printSocks() {
-      lock.lock();
-      if(debug)fprintf(stderr, "{%d} Socks(%d):\n", nodeID, nNodes);
-      for (int i = 0; i < nNodes + 1; i++) {
-        if(debug)fprintf(stderr, "\t%d. %d, %d\n", i, ports[i], sockets[i]);
-      }
-      lock.unlock();
-   }
-
-
-  protected:
-    std::mutex          lock;
-    struct sockaddr_in  listenAddress;
-    std::thread         listenThread;
-    FLBuffer<int>       receiverSockets{1};
-    FLBuffer<Message *> incoming{0};
-    int                 ports[NET_MAX_CONNECTIONS + 1];
-    int                 ips[NET_MAX_CONNECTIONS + 1];
-    int                 sockets[NET_MAX_CONNECTIONS + 1];
-    const int           debug = 0;
-
-    explicit IPv4() : Networking() { ; };
-
-    void receiver();
-
-    void listener(int);
-
-    void send_helper(int, char *);
-
-    int connect(int id);
-
-    int disconnect(int id);
+private:
+  std::string nodeName;
+  std::mutex mtx;
+  struct sockaddr_in stringToSockaddr(std::string input);
+  int setupSocket(int id);
+  int connectSocket(int id);
+  int connectNode(int id);
+  void sendMessage(int id, int length, char *message);
+  std::unordered_map<std::string, int> nameToId;
+  std::unordered_map<int, struct sockaddr_in> idToAddr;
+  std::unordered_map<int, int> idToSock;
+  
+  friend class ReceiverTask;
+  friend class ListenerTask;
+  friend class EndNetTask;
 };
+
+class IPv4Task : public Task {
+protected:
+  IPv4 *net;
+  int socket;
+  IPv4Task(IPv4 *net, int socket)
+    : Task(Type::BLOCKING, 0),
+      net(net), 
+      socket(socket) {}
+  //virtual void executeTask() = 0;
+};
+
+class ReceiverTask : IPv4Task {
+public:
+  ReceiverTask(IPv4 *net, int socket) : IPv4Task(net, socket) { ready(); }
+  void executeTask() override {
+    int id = -1;
+
+    std::cout << "ReceiverTask Created.\n";
+
+    while (true) {
+      uint32_t msgSize = 0;
+      if (read(socket, &msgSize, sizeof(msgSize)) != sizeof(msgSize)) {
+        break;
+      }
+      char *message = new char[msgSize + 1];
+      message[msgSize] = '\0';
+      if (read(socket, message, msgSize) != msgSize) {
+        delete[] message;
+        break;
+      }
+
+      if (id == -1) {
+        std::lock_guard<std::mutex> lock(net->mtx);
+        std::string name(message);
+
+        if (net->nameToId.contains(name)) {
+          id = net->nameToId[name];
+          if ( ! net->idToSock.contains(id)) {
+            net->idToSock[id] = socket;
+          } 
+        } else {
+          id = net->nameToId[name] = net->nameToId.size();
+          net->idToSock[id] = socket;
+        }
+
+        // Do something w/ the message
+        std::cout << message;
+        delete[] message;
+      }
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(net->mtx);
+      if (net->idToSock.contains(id) && net->idToSock[id] == socket) {
+        net->idToSock.erase(id);
+        close(socket);
+      }
+    }
+
+    std::cout << "FIN RECEIVERTASK\n";
+  }
+};
+
+
+class ListenerTask : IPv4Task {
+public:
+  ListenerTask(IPv4 *net, int socket) : IPv4Task(net, socket) { ready(); }
+  void executeTask() override {
+
+    std::cout << "ListenerTask Created:" << socket << "\n";
+
+    while (true) {
+      struct sockaddr_in  respAddress;
+      int                 alen = sizeof( respAddress );
+      int                 respSocket = accept( socket, 
+                                (struct sockaddr *) &respAddress, 
+                                (socklen_t*) &alen);
+      if (respSocket < 0) {
+        printf("Accept\n");
+        fprintf(stderr, "ERRNO:%d\n", errno);
+        std::cout << "FIN LISTENERTASK:" << socket << "\n";
+        return;
+      }
+
+      fprintf(stderr, "socket %d added.\n", respSocket);
+      new ReceiverTask(net, respSocket);
+    }
+  }
+};
+
+class EndNetTask: IPv4Task {
+public:
+  EndNetTask(IPv4 *net) : IPv4Task(net, 0) { registerCleanupTask(); }
+  void executeTask() override {
+    std::cout << "END NET\n";
+    std::lock_guard<std::mutex> lock(net->mtx);
+
+    while ( ! net->idToSock.empty()) {
+      auto elem = *(net->idToSock.begin());
+      std::cout << "Closing " << elem.second << "\n";
+      //close(elem.second);
+      shutdown(elem.second, SHUT_RD);
+      net->idToSock.erase(elem.first);
+    }
+
+    std::cout << "FIN ENDNETTASK\n";
+  }
+};
+
 
 #endif // IPV4_HH
 

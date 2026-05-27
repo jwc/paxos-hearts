@@ -21,6 +21,9 @@ int main() {
   printf("Created\n");
   OtherTask::create();
 
+  IPv4 net1 = IPv4("node1", "127.0.0.1:8989");
+  IPv4 net2 = IPv4("node2", "127.0.0.1:9898");
+  
   //for (int i = 0; i < 5; i++) { OtherTask::create(); }
   //for (int i = 0; i < 5; i++) Task::create();
   
