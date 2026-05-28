@@ -42,17 +42,17 @@ private:
   private:
     using clock = std::chrono::high_resolution_clock;
     using p = std::pair<std::chrono::time_point<clock>, Task*>;
-    using min_heap = std::priority_queue<p, std::deque<p>, std::greater<p>>;
+    using min_heap = std::priority_queue<p, std::vector<p>, std::greater<p>>;
 
-    std::deque<Task*>       nonblockingTasks;
-    std::deque<std::thread> nonblockingThreadPool;
-    std::mutex              nonblockingLock;
-    std::condition_variable nonblockingCV;
-    const static int        maxPoolSize = 16;
+    std::deque<std::thread> threadPool;
     bool                    shouldEnd = false;
 
+    std::deque<Task*>       nonblockingTasks;
+    std::mutex              nonblockingLock;
+    std::condition_variable nonblockingCV;
+    const static int        nonblockingThreadsMax = 4;
+
     std::deque<Task*>       blockingTasks;
-    std::deque<std::thread> blockingThreadPool;
     std::mutex              blockingLock;
     std::condition_variable blockingCV;
     int                     blockingThreadsWaiting = 0;
@@ -60,8 +60,8 @@ private:
     min_heap                waitingTasks;
     std::mutex              waitingLock;
 
-    std::mutex              cleanupLock;
     std::deque<Task*>       cleanupTasks;
+    std::mutex              cleanupLock;
 
     void worker(Type type);
   } taskManager;

@@ -30,10 +30,11 @@ Task::TaskManager Task::taskManager;
 
 Task::TaskManager::TaskManager() {
   int poolSize = std::thread::hardware_concurrency(); 
-  poolSize = poolSize > maxPoolSize ? maxPoolSize : poolSize;
+  if (poolSize > nonblockingThreadsMax) poolSize = nonblockingThreadsMax;
+
   for (int i = 0; i < poolSize; i++) {
     std::thread t(&TaskManager::worker, this, Type::NON_BLOCKING);
-    nonblockingThreadPool.push_back(move(t));
+    threadPool.push_back(move(t));
   }
 
   TimerTask::create();
@@ -97,7 +98,7 @@ void Task::TaskManager::enqueue(Task *task) {
       blockingCV.notify_one();
     } else if (! shouldEnd) {
       std::thread t(&TaskManager::worker, this, Type::BLOCKING);
-      blockingThreadPool.push_back(move(t));
+      threadPool.push_back(move(t));
     }
   }
 }
@@ -139,16 +140,11 @@ void Task::TaskManager::end() {
     delete task;
   }
 
-  while ( ! nonblockingThreadPool.empty()) {
-    nonblockingThreadPool[0].join();
-    nonblockingThreadPool.pop_front();
+  while ( ! threadPool.empty()) {
+    threadPool[0].join();
+    threadPool.pop_front();
   }
 
-  while ( ! blockingThreadPool.empty()) {
-    blockingThreadPool[0].join();
-    blockingThreadPool.pop_front();
-  }
-  
   while ( ! nonblockingTasks.empty()) {
     delete nonblockingTasks.back();
     nonblockingTasks.pop_back();
