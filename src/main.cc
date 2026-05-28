@@ -23,6 +23,12 @@ int main() {
 
   IPv4 net1 = IPv4("node1", "127.0.0.1:8989");
   IPv4 net2 = IPv4("node2", "127.0.0.1:9898");
+
+  net1.addNode("node2", "127.0.0.1:9898");
+  net2.addNode("node1", "127.0.0.1:8989");
+  char m1[] = "Hello World!";
+  net1.sendMessage("node2", 5, m1);
+  net2.sendMessage("node1", strlen(m1), m1);
   
   //for (int i = 0; i < 5; i++) { OtherTask::create(); }
   //for (int i = 0; i < 5; i++) Task::create();

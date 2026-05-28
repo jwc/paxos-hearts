@@ -58,12 +58,14 @@ void IPv4::sendMessage(int id, int length, char *message) {
   int socket = -1;
   {
     std::lock_guard<std::mutex> lock(mtx);
+
     if (id < 0 || id >= (int) nameToId.size()) return;
 
     if (idToSock.contains(id)) {
       socket = idToSock[id];
     } else {
       if ((socket = setupSocket(id)) == -1) return;
+      openSockets.insert(socket);
 
       if (connect(socket, (const sockaddr*)&idToAddr[id], 
             sizeof(struct sockaddr_in)) == -1) {
@@ -75,10 +77,21 @@ void IPv4::sendMessage(int id, int length, char *message) {
       uint32_t nameLen = nodeName.size();
       send(socket, &nameLen, sizeof(nameLen), 0);
       send(socket, nodeName.c_str(), nameLen, 0); 
+
+      new ReceiverTask(this, socket);
     }
 
+    send(socket, &length, sizeof(length), 0);
     send(socket, message, length, 0);
   }
+}
+
+void IPv4::sendMessage(std::string name, int length, char *message) {
+  if ( ! nameToId.contains(name)) return;
+
+  int id = nameToId[name];
+
+  sendMessage(id, length, message);
 }
 
 // Public:
@@ -105,12 +118,29 @@ IPv4::IPv4(std::string name, std::string address) : Networking(name, address) {
   }
 
   idToSock[0] = sock;
+  openSockets.insert(sock);
 
   std::cout << "Create ListenerTask\n";
   new ListenerTask(this, sock);
 
   new EndNetTask(this);
 }
+
+void IPv4::addNode(std::string name, std::string address) {
+  std::lock_guard<std::mutex> lock(mtx);
+
+  int id = -1;
+  if (nameToId.contains(name)) {
+    id = nameToId[name];
+  } else {
+    id = nameToId[name] = nameToId.size();
+  }
+
+  if ( ! idToAddr.contains(id)) {
+    idToAddr[id] = stringToSockaddr(address);
+  }
+}
+
 
 // Private:
 

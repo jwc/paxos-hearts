@@ -16,6 +16,10 @@ public:
 
   explicit IPv4(std::string name, std::string address);
 
+  void addNode(std::string name, std::string address);
+
+  void sendMessage(std::string name, int length, char *message);
+
 protected:
 
 private:
@@ -29,6 +33,7 @@ private:
   std::unordered_map<std::string, int> nameToId;
   std::unordered_map<int, struct sockaddr_in> idToAddr;
   std::unordered_map<int, int> idToSock;
+  std::set<int> openSockets;
   
   friend class ReceiverTask;
   friend class ListenerTask;
@@ -79,18 +84,23 @@ public:
           id = net->nameToId[name] = net->nameToId.size();
           net->idToSock[id] = socket;
         }
-
-        // Do something w/ the message
-        std::cout << message;
-        delete[] message;
       }
+
+      // Do something w/ the message
+      std::cout << "RECV:'" << message << "'\n";
+      delete[] message;
     }
 
     {
       std::lock_guard<std::mutex> lock(net->mtx);
-      if (net->idToSock.contains(id) && net->idToSock[id] == socket) {
-        net->idToSock.erase(id);
-        close(socket);
+
+      if (net->openSockets.contains(socket)) {
+        net->openSockets.erase(socket);
+        shutdown(socket, SHUT_RD);
+
+        if (net->idToSock.contains(id) && net->idToSock[id] == socket) {
+          net->idToSock.erase(id);
+        }
       }
     }
 
@@ -120,6 +130,7 @@ public:
       }
 
       fprintf(stderr, "socket %d added.\n", respSocket);
+      net->openSockets.insert(respSocket);
       new ReceiverTask(net, respSocket);
     }
   }
@@ -132,13 +143,11 @@ public:
     std::cout << "END NET\n";
     std::lock_guard<std::mutex> lock(net->mtx);
 
-    while ( ! net->idToSock.empty()) {
-      auto elem = *(net->idToSock.begin());
-      std::cout << "Closing " << elem.second << "\n";
-      //close(elem.second);
-      shutdown(elem.second, SHUT_RD);
-      net->idToSock.erase(elem.first);
+    for (int sock : net->openSockets) {
+      shutdown(sock, SHUT_RD);
     }
+    net->openSockets.clear();
+    net->idToSock.clear();
 
     std::cout << "FIN ENDNETTASK\n";
   }
