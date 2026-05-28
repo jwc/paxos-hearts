@@ -75,13 +75,15 @@ void IPv4::sendMessage(int id, int length, char *message) {
 
       idToSock[id] = socket;
       uint32_t nameLen = nodeName.size();
-      send(socket, &nameLen, sizeof(nameLen), 0);
+      uint32_t netOrderNameLen = htonl(nameLen);
+      send(socket, &netOrderNameLen, sizeof(netOrderNameLen), 0);
       send(socket, nodeName.c_str(), nameLen, 0); 
 
       new ReceiverTask(this, socket);
     }
 
-    send(socket, &length, sizeof(length), 0);
+    uint32_t netOrderLength = htonl(length);
+    send(socket, &netOrderLength, sizeof(netOrderLength), 0);
     send(socket, message, length, 0);
   }
 }

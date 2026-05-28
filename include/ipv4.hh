@@ -64,6 +64,8 @@ public:
       if (read(socket, &msgSize, sizeof(msgSize)) != sizeof(msgSize)) {
         break;
       }
+
+      msgSize = ntohl(msgSize);
       char *message = new char[msgSize + 1];
       message[msgSize] = '\0';
       if (read(socket, message, msgSize) != msgSize) {
@@ -128,6 +130,11 @@ public:
         std::cout << "FIN LISTENERTASK:" << socket << "\n";
         return;
       }
+
+      uint32_t nameLen = net->nodeName.size();
+      uint32_t netOrderNameLen = htonl(nameLen);
+      send(respSocket, &netOrderNameLen, sizeof(netOrderNameLen), 0);
+      send(respSocket, net->nodeName.c_str(), nameLen, 0);
 
       fprintf(stderr, "socket %d added.\n", respSocket);
       net->openSockets.insert(respSocket);
