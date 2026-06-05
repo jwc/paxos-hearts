@@ -7,26 +7,56 @@ typedef uint32_t ballot_t;
 typedef uint32_t slot_t;
 typedef struct vote_t {
   uint32_t votes = 0;
-  void castVote(node_t id) {
-    votes |= 1 << id;
-  }
-  int getVoteCount() {
-    return __builtin_popcount(votes);
-  }
+
+  void cast(node_t id) { votes |= 1 << id; }
+
+  int count() { return __builtin_popcount(votes); }
+
+  bool hasMajorityOf(node_t num) { return (count() * 2) > num; }
+
   void clear() { votes = 0; }
+
 } Vote;
 static_assert(sizeof(Vote) == sizeof(uint32_t));
 
-class Paxos : Application {
+class Log {
+  node_t & maxVotes;
+  std::unordered_map<slot_t, Value> values;
+  std::unordered_map<slot_t, Vote> votes;
+  slot_t pendingStart = 0;
+  slot_t pendingEnd = 0;
+
 public:
-  Paxos(std::string name, std::string address); 
+  const static int maxPending = 4;
+  Log(node_t &maxVotes) : maxVotes(maxVotes) {}
 
-  void addServer(std::string name, std::string address);
+  slot_t getPendingStart() { return pendingStart; }
+  slot_t getPendingEnd() { return pendingEnd; }
 
-  void finalizeServers();
+  Value getValue(slot_t slot) { return values[slot]; }
 
-  void processMessage(int length, char *message);
+  Vote getVote(slot_t slot) { return votes[slot]; }
 
+  void setValue(slot_t slot, Value value) 
+  { if (isWritable(slot)) values[slot] = value; }
+
+  void setVote(slot_t slot, Vote vote) 
+  { if (isWritable(slot)) votes[slot] = vote; }
+
+  bool isPending(slot_t slot) 
+  { return isFilled(slot) && ! votes[slot].hasMajorityOf(maxVotes); }
+
+  bool isConfirmed(slot_t slot) 
+  { return isFilled(slot) && votes[slot].hasMajorityOf(maxVotes); }
+
+  bool isFilled(slot_t slot) 
+  { return values.contains(slot) && votes.contains(slot); }
+
+  bool isWritable(slot_t slot) 
+  { return slot >= pendingStart && slot < pendingStart + maxPending; }
+};
+
+class Paxos : Application {
 //private:
   IPv4                      net;
   std::vector<std::string>  servers;
@@ -36,9 +66,10 @@ public:
   ballot_t                  latestBallot = 0;
   ballot_t                  myBallot = 0;
   Vote                      leaderVote;
+  Log                       log{numServers};
 
-  const static int          maxPendingValues = 4;
-
+  const static int          maxPendingValues = Log::maxPending;
+public:
   enum Type : uint8_t { 
     PREPARE = 1, 
     PROMISE = 2,
@@ -151,9 +182,19 @@ public:
     void print() {
       printf("PROM{to:%d  from:%d  bal:%d", getTo(), getFrom(), getBallot());
       for (slot_t i = getPromisedStart(); i < getPromisedEnd(); i++)
-        printf("\t%ud:%ud:%ud\n", i, getValue(i), getVote(i).getVoteCount());
+        printf("\t%ud:%ud:%ud\n", i, getValue(i), getVote(i).count());
     }
   };
+
+public:
+  Paxos(std::string name, std::string address); 
+
+  void addServer(std::string name, std::string address);
+
+  void finalizeServers();
+
+  void processMessage(int length, char *message);
+
 };
 
 #endif // PAXOS_HH
