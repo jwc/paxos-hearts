@@ -6,7 +6,7 @@ Paxos::Paxos(std::string name, std::string address) : net(name, address) {
 }
 
 void Paxos::addServer(std::string name, std::string address) {
-  if (numServers != -1) return;
+  if (numServers > 0) return;
 
   net.addNode(name, address);
 
@@ -14,6 +14,10 @@ void Paxos::addServer(std::string name, std::string address) {
 }
 
 void Paxos::finalizeServers() {
+  printf("finalizeServers()\n");
+  if (numServers > 0) return;
+  printf("finalize %ld\n", servers.size());
+
   numServers = servers.size();
   std::string name = servers[0];
 
@@ -27,11 +31,16 @@ void Paxos::finalizeServers() {
   }
 
   myBallot = id + numServers;
+
+  printf("new PaxosTask\n:");
+  new PaxosTask(this);
 }
 
 void Paxos::processMessage(int length, char *message) {
   std::cout << "processMessage()\n";
-  if (numServers < 0) {
+  if (numServers <= 0) {
+    std::cerr << "Message received before servers setup.\n";
+    // Paxos servers not yet established: do nothing.
     return;
   }
 
@@ -62,7 +71,15 @@ void Paxos::processMessage(int length, char *message) {
       }
     case ACCEPT:
     case ACCEPTED:
+      m.print();
+      break;
     case HEARTBEAT:
+      {
+        HeartbeatMsg heartbeat = HeartbeatMsg(message);
+        heartbeat.print();
+        handleHeartbeat(heartbeat);
+        break;
+      }
     case REQUEST:
       m.print();
       break;
@@ -77,14 +94,14 @@ void Paxos::handlePrepare(Paxos::PrepareMsg &prep) {
   if (prep.getBallot() > latestBallot) {
     std::cout << "TRUE\n";
 
+    intervalsWithoutLeader = 0;
     latestBallot = prep.getBallot();
     char bytes[Paxos::PromiseMsg::messageSize];
     for (int i = 0; i < Paxos::PromiseMsg::messageSize; i++) bytes[i] = 0;
     PromiseMsg prom = Paxos::PromiseMsg(bytes, 0, id, latestBallot, log.getPendingStart(), log.getPendingEnd());
 
     std::cout << "HI1\n";
-    slot_t i;
-    for (i = log.getPendingStart(); i < log.getPendingEnd(); i++) {
+    for (slot_t i = log.getPendingStart(); i < log.getPendingEnd(); i++) {
       if (log.isFilled(i)) {
         prom.setValue(i, log.getValue(i));
         prom.setVote(i, log.getVote(i));
@@ -93,7 +110,8 @@ void Paxos::handlePrepare(Paxos::PrepareMsg &prep) {
     
     printf("# servers: %d\n", numServers);
     std::cout << "numServers:" << numServers << "\n";
-    for (i = 0; i < numServers; i++) {
+    for (node_t i = 0; i < numServers; i++) {
+      if (i == id) continue;
       prom.setTo(i);
       std::cout << id << "->" << i << std::endl;
       net.sendMessage(servers[i], Paxos::PromiseMsg::messageSize, bytes);
@@ -114,3 +132,12 @@ void Paxos::handlePromise(Paxos::PromiseMsg &prom) {
   }
 }
 
+void Paxos::handleHeartbeat(Paxos::HeartbeatMsg &heartbeat) {
+  if (latestBallot == heartbeat.getBallot()) {
+    intervalsWithoutLeader = 0;
+
+  } else if (latestBallot < heartbeat.getBallot()) {
+    latestBallot = heartbeat.getBallot();
+    intervalsWithoutLeader = 0;
+  } 
+}

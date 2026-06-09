@@ -79,13 +79,15 @@ class Paxos : Application {
 //private:
   IPv4                      net;
   std::vector<std::string>  servers;
-  node_t                    numServers  = -1;
-  node_t                    id          = -1;
+  node_t                    numServers  = 0;
+  node_t                    id          = 0;
 
   ballot_t                  latestBallot = 0;
   ballot_t                  myBallot = 0;
   Vote                      leaderVote;
   Log                       log{numServers};
+  int                       intervalsWithoutLeader = 0;
+  const static int          MAX_INTERVALS_WO_LEADER = 3;
 
   bool isLeader() 
   { return latestBallot == myBallot && leaderVote.hasMajorityOf(numServers); }
@@ -208,6 +210,68 @@ public:
     }
   };
 
+  class HeartbeatMsg : public Message {
+  public: 
+    HeartbeatMsg(char * data) : Message(data) {}
+    HeartbeatMsg(char * data, node_t to, node_t from, ballot_t ballot)
+      : Message(data, Type::HEARTBEAT, to, from, ballot) {}
+
+    void print() {
+      printf("HEART{to:%d from:%d bal:%d}\n", getTo(), getFrom(), getBallot());
+    }
+  };
+ 
+  class PaxosTask : public Task {
+    const static int WAIT_TIME_MS = 1000;
+    Paxos *pax;
+
+  public:
+    PaxosTask(Paxos *pax) : Task(Type::NON_BLOCKING, WAIT_TIME_MS), pax(pax) 
+    { printf("REeady\n"); ready(); }
+
+    void executeTask() {
+      printf("%d Timer int:%d\n", pax->id, pax->intervalsWithoutLeader);
+
+      if (pax == nullptr) return;
+
+      if (pax->numServers <= 0) { 
+        // Paxos servers not yet established: do nothing.
+        new PaxosTask(pax);
+        return;
+      }
+
+      if (pax->isLeader()) {
+        // send heartbeat message
+        char msgRaw[Paxos::HeartbeatMsg::messageSize] = {0};
+        HeartbeatMsg msg = HeartbeatMsg(msgRaw, pax->id, pax->id, pax->latestBallot);
+        for (node_t i = 0; i < pax->numServers; i++) {
+          if (i == pax->id) continue;
+          msg.setTo(i);
+          pax->net.sendMessage(pax->servers[i], HeartbeatMsg::messageSize, msgRaw);
+        }
+
+      } else {
+        // determine if leader is live
+        if (pax->intervalsWithoutLeader++ > MAX_INTERVALS_WO_LEADER) {
+          while (pax->myBallot < pax->latestBallot) pax->myBallot += pax->numServers;
+          pax->leaderVote.clear();
+          pax->leaderVote.cast(pax->id);
+          pax->latestBallot = pax->myBallot;
+
+          char msgRaw[Paxos::PrepareMsg::messageSize] = {0};
+          Paxos::PrepareMsg msg = Paxos::PrepareMsg(msgRaw, pax->id, pax->id, pax->latestBallot);
+          for (node_t i = 0; i < pax->numServers; i++) {
+            if (i == pax->id) continue;
+            msg.setTo(i);
+            pax->net.sendMessage(pax->servers[i], PrepareMsg::messageSize, msgRaw);
+          }
+        }
+      }
+
+      new PaxosTask(pax);
+    }
+  };
+
 public:
   Paxos(std::string name, std::string address); 
 
@@ -220,6 +284,8 @@ public:
   void handlePrepare(PrepareMsg &prep);
   
   void handlePromise(PromiseMsg &prom);
+
+  void handleHeartbeat(HeartbeatMsg &heartbeat);
 
 };
 
